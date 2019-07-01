@@ -36,9 +36,13 @@ namespace fs = boost::filesystem;
 
 void Account::setCode(bytes&& _code, u256 const& _version)
 {
-    m_codeCache = std::move(_code);
-    m_hasNewCode = true;
-    m_codeHash = sha3(m_codeCache);
+    auto const newHash = sha3(_code);
+    if (newHash != m_codeHash)
+    {
+        m_codeCache = std::move(_code);
+        m_hasNewCode = true;
+        m_codeHash = newHash;
+    }
     m_version = _version;
 }
 
@@ -47,6 +51,7 @@ void Account::resetCode()
     m_codeCache.clear();
     m_hasNewCode = false;
     m_codeHash = EmptySHA3;
+    m_version = 0;
 }
 
 u256 Account::originalStorageValue(u256 const& _key, OverlayDB const& _db) const
