@@ -36,6 +36,11 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
+namespace
+{
+Address const c_RipemdPrecompiledAddress{0x03};
+}
+
 State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs):
     m_db(_db),
     m_state(&m_db),
@@ -589,8 +594,15 @@ void State::rollback(size_t _savepoint)
             account.resetCode();
             break;
         case Change::Touch:
-            account.untouch();
-            m_unchangedCacheEntries.emplace_back(change.address);
+            // Empty precompiled contracts need to be deleted even in case of OOG,  because
+            // the bug in both Geth and Parity led to deleting RIPEMD precompiled in this case,
+            // https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
+            // https://github.com/ethereum/EIPs/issues/716
+            if (change.address != c_RipemdPrecompiledAddress)
+            {
+                account.untouch();
+                m_unchangedCacheEntries.emplace_back(change.address);
+            }
             break;
         }
         m_changeLog.pop_back();
